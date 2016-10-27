@@ -1,94 +1,84 @@
 package Packets
 
 import (
-	//"fmt"
 	"bytes"
 	"encoding/binary"
 	payloads "CCP/Packets/Payloads"
 	"fmt"
 )
 
-type packet_ struct{
-	hd header
-	pl []byte
+type Packet struct{
+	header  Header
+	payload []byte
 }
 
-type header struct {
+type Header struct {
 	command_name [5]byte
 	payload_length uint16
 }
 
-type payload_ interface{}
+type Payload []byte
 
 func Test(){
 
-	h1 := &header{}
-	h1.payload_length = uint16(12)
-	copy(h1.command_name[:], []byte("alert"))
+	alert := payloads.EncodeAlert("description bla bla bla")
+	pkt := Create_packet(alert.Forge(),alert.GetName())
 
+	fmt.Println(pkt)
 
-	pl := []byte("123456789012")
-
-	fmt.Println(h1)
-	fmt.Println(pl)
-
-	b := h1.header_writer()
-	fmt.Println(b)
-
-	h2 := &header{}
-	h2.header_reader(bytes.NewBuffer(b))
-	fmt.Println(h2)
-	//-------
-
-	pck := &packet_{}
-	pck.hd = *h1
-	pck.pl = []byte("alexis")
-
-	fmt.Println(pck)
-	fmt.Println(pck.Encode_packet_to_binary())
-	fmt.Println(pck.Decode_binary_packet(pck.Encode_packet_to_binary()))
+	decoded := Packet{}
+	fmt.Println(decoded.Decode_binary_packet(pkt))
 
 
 }
 
 
+//func Decode_binary()interface{} {}
 
-func (packet *packet_) Decode_binary_packet(pckt []byte) payload_{
-	header := &header{}
-	payload := ""
+func Create_packet(payload Payload, command_name string) []byte{
+	header := Header{}
+	header.payload_length = uint16(len(payload))
+	copy(header.command_name[:],[]byte(command_name) )
 
-	buff_packet := bytes.NewBuffer(pckt)
-	header.header_reader(buff_packet)
+	packet := Packet{}
+	packet.header = header
+	packet.payload = payload
+
+	return packet.Encode_packet_to_binary()
+}
+
+func (packet *Packet) Decode_binary_packet(pckt []byte) interface{} {
+	header := &Header{}
+
+	buffer_packet := bytes.NewBuffer(pckt)
+	header.header_reader(buffer_packet)
 
 	if bytes.HasSuffix(header.command_name[:], []byte("alert")){
-		payload = payloads.V()
-		//fmt.Println( payload )
+		alert :=  payloads.DecodeAlert(buffer_packet)
+		return string(alert.Description)
 	}else {
-		payload = "err"
+		return []byte("err")
 	}
-	return payload
 }
 
 
-func (packet *packet_) Encode_packet_to_binary() []byte{
-	return append(packet.hd.header_writer()[:], packet.pl[:]...)
+func (packet *Packet) Encode_packet_to_binary() []byte{
+	return append(packet.header.header_writer()[:], packet.payload[:]...)
 }
 
-func (header *header) header_reader(packet *bytes.Buffer) (error){
+func (header *Header) header_reader(packet *bytes.Buffer) (error){
 
 	copy(header.command_name[:],packet.Next(5) )
 	header.payload_length = binary.LittleEndian.Uint16(packet.Next(2))
 
-	//binary.LittleEndian.PutUint16(header.payload_length, binary.LittleEndian.Uint16(packet.Next(2)))
-
 	return  nil
 }
 
-func (header *header) header_writer() []byte{
-	var bin_buf bytes.Buffer
+func (header *Header) header_writer() []byte{
+	var buffer bytes.Buffer
 
-	binary.Write(&bin_buf, binary.LittleEndian, header)
-	return bin_buf.Bytes()
+	binary.Write(&buffer, binary.LittleEndian, header)
+	return buffer.Bytes()
 }
 
 /*
