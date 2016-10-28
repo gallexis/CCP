@@ -2,7 +2,6 @@ package Packets
 
 import (
 	"bytes"
-	"encoding/binary"
 	"CCP/Packets/Payloads"
 )
 
@@ -11,57 +10,39 @@ type Packet struct{
 	payload Payload
 }
 
-type Header struct {
-	command_name [5]byte
-	payload_length uint16
-}
-
-type Payload interface{
-	Get_command_name() string
-	Forge() []byte
-}
-
 func Create_packet(payload Payload) []byte{
+
+	// forge payload now, calculate its size, then pass it to Encode_packet_to_binary.
+	// That way it will not be forged twice
+	forged_payload := payload.Forge()
+
 	header := Header{}
 	copy(header.command_name[:],[]byte(payload.Get_command_name()) )
-	header.payload_length = uint16(len(payload.Forge()))
+	header.payload_length = uint16(len(forged_payload))
 
 	packet := Packet{}
 	packet.header = header
 	packet.payload = payload
 
-	return packet.Encode_packet_to_binary()
+	return packet.Encode_packet_to_binary(forged_payload)
 }
 
-func (packet *Packet) Decode_binary_packet(pckt []byte) interface{} {
+func Decode_binary_packet(pckt []byte) (Payload,error) {
 	header := &Header{}
 
 	buffer_packet := bytes.NewBuffer(pckt)
-	header.header_reader(buffer_packet)
+	header.read_header(buffer_packet)
 
 	if bytes.HasSuffix(header.command_name[:], []byte("alert")){
-		alert :=  Payloads.DecodeAlert(buffer_packet)
-		return string(alert.Description)
+		Alert :=  Payloads.DecodeAlert(buffer_packet)
+		return  Alert,nil
 	}else {
-		return []byte("err")
+		return nil,nil
 	}
 }
 
-func (packet *Packet) Encode_packet_to_binary() []byte{
-	return append(packet.header.header_writer()[:], packet.payload.Forge()...)
+func (packet *Packet) Encode_packet_to_binary(forged_payload []byte) []byte{
+	return append(packet.header.write_header()[:], forged_payload...)
 }
 
-func (header *Header) header_reader(packet *bytes.Buffer) (error){
 
-	copy(header.command_name[:],packet.Next(5) )
-	header.payload_length = binary.LittleEndian.Uint16(packet.Next(2))
-
-	return  nil
-}
-
-func (header *Header) header_writer() []byte{
-	var buffer bytes.Buffer
-
-	binary.Write(&buffer, binary.LittleEndian, header)
-	return buffer.Bytes()
-}

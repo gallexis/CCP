@@ -1,7 +1,7 @@
 package main
 
 import (
-	packets "CCP/Packets"
+	"CCP/Packets"
 	"fmt"
 	"CCP/Packets/Payloads"
 )
@@ -11,10 +11,22 @@ import (
 func main() {
 
 	alert := Payloads.EncodeAlert("description bla bla bla")
-	pkt := packets.Create_packet(alert)
+	pkt := Packets.Create_packet(alert)
 
 	fmt.Println(pkt)
 
-	decoded := packets.Packet{}
-	fmt.Println(decoded.Decode_binary_packet(pkt))
+	decoded,_ := Packets.Decode_binary_packet(pkt)
+
+	switch v := decoded.(type) {
+
+	case Payloads.Alert:
+		fmt.Println("Alert message :D")
+		fmt.Println(string(v.Description))
+
+	default:
+		fmt.Print(":/")
+
+	}
+
 }
+
