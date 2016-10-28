@@ -3,13 +3,12 @@ package Packets
 import (
 	"bytes"
 	"encoding/binary"
-	payloads "CCP/Packets/Payloads"
-	"fmt"
+	"CCP/Packets/Payloads"
 )
 
 type Packet struct{
 	header  Header
-	payload []byte
+	payload Payload
 }
 
 type Header struct {
@@ -17,28 +16,15 @@ type Header struct {
 	payload_length uint16
 }
 
-type Payload []byte
-
-func Test(){
-
-	alert := payloads.EncodeAlert("description bla bla bla")
-	pkt := Create_packet(alert.Forge(),alert.GetName())
-
-	fmt.Println(pkt)
-
-	decoded := Packet{}
-	fmt.Println(decoded.Decode_binary_packet(pkt))
-
-
+type Payload interface{
+	Get_command_name() string
+	Forge() []byte
 }
 
-
-//func Decode_binary()interface{} {}
-
-func Create_packet(payload Payload, command_name string) []byte{
+func Create_packet(payload Payload) []byte{
 	header := Header{}
-	header.payload_length = uint16(len(payload))
-	copy(header.command_name[:],[]byte(command_name) )
+	copy(header.command_name[:],[]byte(payload.Get_command_name()) )
+	header.payload_length = uint16(len(payload.Forge()))
 
 	packet := Packet{}
 	packet.header = header
@@ -54,16 +40,15 @@ func (packet *Packet) Decode_binary_packet(pckt []byte) interface{} {
 	header.header_reader(buffer_packet)
 
 	if bytes.HasSuffix(header.command_name[:], []byte("alert")){
-		alert :=  payloads.DecodeAlert(buffer_packet)
+		alert :=  Payloads.DecodeAlert(buffer_packet)
 		return string(alert.Description)
 	}else {
 		return []byte("err")
 	}
 }
 
-
 func (packet *Packet) Encode_packet_to_binary() []byte{
-	return append(packet.header.header_writer()[:], packet.payload[:]...)
+	return append(packet.header.header_writer()[:], packet.payload.Forge()...)
 }
 
 func (header *Header) header_reader(packet *bytes.Buffer) (error){
@@ -80,17 +65,3 @@ func (header *Header) header_writer() []byte{
 	binary.Write(&buffer, binary.LittleEndian, header)
 	return buffer.Bytes()
 }
-
-/*
-func Binary_to_payload(packet []byte) Header{
-
-
-
-}
-
-
-func Payload_to_binary(payload payload) []byte{
-
-
-}
-*/
