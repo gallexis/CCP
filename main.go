@@ -12,7 +12,7 @@ import (
 // Car Communication Protocol
 func main() {
 
-	// Client
+	// Server
 	if len(os.Args) > 1{
 
 		c,_ := Network.NewConnection("localhost","6000")
