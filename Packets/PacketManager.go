@@ -27,14 +27,21 @@ func Create_packet(payload Payload) []byte{
 	return packet.Encode_packet_to_binary(forged_payload)
 }
 
-func Decode_binary_packet(pckt []byte) (Payload,error) {
+func Decode_binary_header(pckt []byte) (*Header,error) {
 	header := &Header{}
 
 	buffer_packet := bytes.NewBuffer(pckt)
 	header.read_header(buffer_packet)
 
+	return header,nil
+}
+
+func Decode_binary_payload(header *Header, payload []byte) (Payload,error) {
+
+	buffer_payload := bytes.NewBuffer(payload)
+
 	if bytes.HasSuffix(header.command_name[:], []byte("alert")){
-		Alert :=  Payloads.DecodeAlert(buffer_packet)
+		Alert :=  Payloads.DecodeAlert(buffer_payload)
 		return  Alert,nil
 	}else {
 		return nil,nil
