@@ -20,12 +20,10 @@ func recv_all(length int,c net.Conn) ([]byte, error){
 	for length > 0{
 
 		n,err := reader.Read(buf)
-		fmt.Print("Bytes read: ")
-		fmt.Println(n)
-
 		if err != nil || n == 0 {
 			return nil, err
 		}
+
 		length -= n
 	}
 	return buf,nil
@@ -38,20 +36,18 @@ func handleConnection(c net.Conn) {
 	packet := make([]byte, HEADER_SIZE)
 
 	for {
+		//Get header
 		n, err := c.Read(packet)
-
 		if err != nil || n != HEADER_SIZE {
-			fmt.Println(err)
+			log.Print("Disconnected: ", err)
 			close_connection(c)
 			return
 		}
 
-		fmt.Println(packet)
-
 		//Parse the header
 		parsed_header,err := Packets.Decode_binary_header(packet)
 		if err != nil {
-			fmt.Println(err)
+			log.Print("Problem parsing header: ", err)
 			close_connection(c)
 			return
 		}
@@ -59,27 +55,27 @@ func handleConnection(c net.Conn) {
 		//Get the payload
 		payload_size := int(parsed_header.Payload_length)
 		payload, err := recv_all(payload_size,c)
-
 		if err != nil || len(payload) != payload_size{
-			fmt.Println("problem decoding payload")
-			fmt.Println(payload_size)
-			fmt.Println(len(payload))
-
+			log.Print("Problem getting payload: ", err)
 			close_connection(c)
 			return
 		}
 
 		//Decode the payload
-		decoded_payload,_ := Packets.Decode_binary_payload(parsed_header,payload)
+		decoded_payload,err := Packets.Decode_binary_payload(parsed_header,payload)
+		if err != nil {
+			log.Print("Problem decoding the payload: ", err)
+			close_connection(c)
+			return
+		}
 
 		switch payload := decoded_payload.(type) {
+			case Payloads.Alert:
+				fmt.Println("Alert message :D")
+				fmt.Println(string(payload.Description))
 
-		case Payloads.Alert:
-			fmt.Println("Alert message :D")
-			fmt.Println(payload)
-
-		default:
-			fmt.Print(":/")
+			default:
+				fmt.Print(":/")
 
 		}
 
@@ -104,6 +100,7 @@ func Start_server() {
 		conn, err := ln.Accept()
 
 		if err != nil {
+			log.Print("Error incoming connection: ")
 			log.Println(err)
 			close_connection(conn)
 			continue

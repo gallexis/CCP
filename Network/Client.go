@@ -35,7 +35,7 @@ func (connection Connection)SendAll(data []byte) error{
 	length_data := len(data)
 	cpt := 0
 
-	for length_data > 0{
+	for length_data > cpt{
 		n,err := connection.Socket.Write(data[cpt:])
 
 		if err != nil  {
