@@ -6,6 +6,7 @@ import (
 	"CCP/Packets/Payloads"
 	"fmt"
 	"os"
+	"time"
 )
 
 // Car Communication Protocol
@@ -20,11 +21,13 @@ func main() {
 
 		c, _ := Network.NewConnection("localhost", "6000")
 
-		alert := Payloads.EncodeAlert("Test Alert")
+		alert := Payloads.EncodeAlert("Test Alert: "+c.Socket.LocalAddr().String())
 		pkt := Packets.Create_packet(alert)
 
 		fmt.Println(pkt)
 
+		time.Sleep(100 * time.Millisecond)
 		c.SendAll(pkt)
+		time.Sleep(1000 * time.Millisecond)
 	}
 }

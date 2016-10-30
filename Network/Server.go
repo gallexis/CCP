@@ -9,6 +9,11 @@ import (
 	"net"
 )
 
+type Client_message struct{
+	sock net.Conn
+	message []byte
+}
+
 var socket_pool = make(map[net.Conn]net.Addr)
 var HEADER_SIZE int = 7
 
@@ -29,15 +34,25 @@ func recv_all(length int, c net.Conn) ([]byte, error) {
 	return buf, nil
 }
 
+func Broadcast(emiter net.Conn, message []byte){
+
+	for sock,_ := range socket_pool{
+		if sock != emiter{
+			sock.Write(message)
+		}
+	}
+
+}
+
 func handleConnection(c net.Conn) {
 
 	log.Printf("Client %v connected.", c.RemoteAddr())
 
-	packet := make([]byte, HEADER_SIZE)
+	header := make([]byte, HEADER_SIZE)
 
 	for {
 		//Get header
-		n, err := c.Read(packet)
+		n, err := c.Read(header)
 		if err != nil || n != HEADER_SIZE {
 			log.Print("Disconnected: ", err)
 			close_connection(c)
@@ -45,7 +60,7 @@ func handleConnection(c net.Conn) {
 		}
 
 		//Parse the header
-		parsed_header, err := Packets.Decode_binary_header(packet)
+		parsed_header, err := Packets.Decode_binary_header(header)
 		if err != nil {
 			log.Print("Problem parsing header: ", err)
 			close_connection(c)
@@ -60,6 +75,12 @@ func handleConnection(c net.Conn) {
 			close_connection(c)
 			return
 		}
+
+		//Broadcast the message to all the other nodes
+		go Broadcast(c,append(header,payload...))
+
+		//The server can have a global view of the transmitted messages
+		//among the nodes:
 
 		//Decode the payload
 		decoded_payload, err := Packets.Decode_binary_payload(parsed_header, payload)
