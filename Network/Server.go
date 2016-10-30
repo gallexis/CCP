@@ -1,32 +1,32 @@
 package Network
 
 import (
-	"fmt"
-	"log"
-	"net"
 	"CCP/Packets"
 	"CCP/Packets/Payloads"
 	"bufio"
+	"fmt"
+	"log"
+	"net"
 )
 
 var socket_pool = make(map[net.Conn]net.Addr)
 var HEADER_SIZE int = 7
 
-func recv_all(length int,c net.Conn) ([]byte, error){
+func recv_all(length int, c net.Conn) ([]byte, error) {
 
 	reader := bufio.NewReader(c)
 	buf := make([]byte, length)
 
-	for length > 0{
+	for length > 0 {
 
-		n,err := reader.Read(buf)
+		n, err := reader.Read(buf)
 		if err != nil || n == 0 {
 			return nil, err
 		}
 
 		length -= n
 	}
-	return buf,nil
+	return buf, nil
 }
 
 func handleConnection(c net.Conn) {
@@ -45,7 +45,7 @@ func handleConnection(c net.Conn) {
 		}
 
 		//Parse the header
-		parsed_header,err := Packets.Decode_binary_header(packet)
+		parsed_header, err := Packets.Decode_binary_header(packet)
 		if err != nil {
 			log.Print("Problem parsing header: ", err)
 			close_connection(c)
@@ -54,15 +54,15 @@ func handleConnection(c net.Conn) {
 
 		//Get the payload
 		payload_size := int(parsed_header.Payload_length)
-		payload, err := recv_all(payload_size,c)
-		if err != nil || len(payload) != payload_size{
+		payload, err := recv_all(payload_size, c)
+		if err != nil || len(payload) != payload_size {
 			log.Print("Problem getting payload: ", err)
 			close_connection(c)
 			return
 		}
 
 		//Decode the payload
-		decoded_payload,err := Packets.Decode_binary_payload(parsed_header,payload)
+		decoded_payload, err := Packets.Decode_binary_payload(parsed_header, payload)
 		if err != nil {
 			log.Print("Problem decoding the payload: ", err)
 			close_connection(c)
@@ -70,22 +70,22 @@ func handleConnection(c net.Conn) {
 		}
 
 		switch payload := decoded_payload.(type) {
-			case Payloads.Alert:
-				fmt.Println("Alert message :D")
-				fmt.Println(string(payload.Description))
+		case Payloads.Alert:
+			fmt.Println("Alert message :D")
+			fmt.Println(string(payload.Description))
 
-			default:
-				fmt.Print(":/")
+		default:
+			fmt.Print(":/")
 
 		}
 
 	}
 }
 
-func close_connection(c net.Conn){
+func close_connection(c net.Conn) {
 	log.Printf("Connection from %v closed.", c.RemoteAddr())
 	c.Close()
-	delete(socket_pool,c)
+	delete(socket_pool, c)
 }
 
 func Start_server() {

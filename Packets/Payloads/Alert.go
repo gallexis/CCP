@@ -7,15 +7,15 @@ import (
 
 var command_name string = "alert"
 
-type Alert struct{
+type Alert struct {
 	Description []byte
 }
 
-func (alert Alert) Get_command_name() string{
+func (alert Alert) Get_command_name() string {
 	return command_name
 }
 
-func (alert Alert) Forge() []byte{
+func (alert Alert) Forge() []byte {
 	var buffer bytes.Buffer
 
 	binary.Write(&buffer, binary.LittleEndian, alert.Description)
@@ -35,4 +35,3 @@ func DecodeAlert(payload *bytes.Buffer) Alert {
 
 	return alert
 }
-

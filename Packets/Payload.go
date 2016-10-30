@@ -1,6 +1,6 @@
 package Packets
 
-type Payload interface{
+type Payload interface {
 	Get_command_name() string
 	Forge() []byte
 }
