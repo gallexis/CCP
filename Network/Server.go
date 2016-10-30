@@ -6,66 +6,82 @@ import (
 	"net"
 	"CCP/Packets"
 	"CCP/Packets/Payloads"
+	"bufio"
 )
 
-var socket_pool map[net.Conn]net.Addr
+var socket_pool = make(map[net.Conn]net.Addr)
+var HEADER_SIZE int = 7
 
-func recv_all(length uint16,c net.Conn) ([]byte, error){
-	payload := make([]byte, length)
-	var tmp []byte
+func recv_all(length int,c net.Conn) ([]byte, error){
+
+	reader := bufio.NewReader(c)
+	buf := make([]byte, length)
 
 	for length > 0{
 
-		n, err := c.Read(tmp)
+		n,err := reader.Read(buf)
+		fmt.Print("Bytes read: ")
+		fmt.Println(n)
 
 		if err != nil || n == 0 {
 			return nil, err
 		}
-
-		append(payload,tmp)
-
-		payload -= n
+		length -= n
 	}
-	return payload,nil
+	return buf,nil
 }
 
 func handleConnection(c net.Conn) {
 
 	log.Printf("Client %v connected.", c.RemoteAddr())
 
-	packet := make([]byte, 6) // Size of header: 6 bytes
+	packet := make([]byte, HEADER_SIZE)
 
 	for {
-			n, err := c.Read(packet)
+		n, err := c.Read(packet)
 
-			if err != nil || n == 0 {
-				close_connection(c)
-				return
-			}
+		if err != nil || n != HEADER_SIZE {
+			fmt.Println(err)
+			close_connection(c)
+			return
+		}
 
-			//Parse the header
-			parsed_header,_ := Packets.Decode_binary_header(packet)
+		fmt.Println(packet)
 
-			//Get the payload
-			payload, err := recv_all(parsed_header.Payload_length,c)
-			if err != nil {
-				close_connection(c)
-				return
-			}
+		//Parse the header
+		parsed_header,err := Packets.Decode_binary_header(packet)
+		if err != nil {
+			fmt.Println(err)
+			close_connection(c)
+			return
+		}
 
-			//Decode the payload
-			decoded_payload,_ := Packets.Decode_binary_payload(parsed_header,payload)
+		//Get the payload
+		payload_size := int(parsed_header.Payload_length)
+		payload, err := recv_all(payload_size,c)
 
-			switch payload := decoded_payload.(type) {
+		if err != nil || len(payload) != payload_size{
+			fmt.Println("problem decoding payload")
+			fmt.Println(payload_size)
+			fmt.Println(len(payload))
 
-			case Payloads.Alert:
-				fmt.Println("Alert message :D")
-				fmt.Println(string(payload.Description))
+			close_connection(c)
+			return
+		}
 
-			default:
-				fmt.Print(":/")
+		//Decode the payload
+		decoded_payload,_ := Packets.Decode_binary_payload(parsed_header,payload)
 
-			}
+		switch payload := decoded_payload.(type) {
+
+		case Payloads.Alert:
+			fmt.Println("Alert message :D")
+			fmt.Println(payload)
+
+		default:
+			fmt.Print(":/")
+
+		}
 
 	}
 }
@@ -76,7 +92,7 @@ func close_connection(c net.Conn){
 	delete(socket_pool,c)
 }
 
-func Server() {
+func Start_server() {
 	ln, err := net.Listen("tcp", ":6000")
 	if err != nil {
 		log.Fatal(err)

@@ -5,19 +5,46 @@ import (
 	"fmt"
 )
 
-func main() {
-	hostName := "example.com" // change this
-	portNum := "6000"
+type Connection struct{
+	Socket net.Conn
+	Connected bool
+}
 
-	conn, err := net.Dial("tcp", hostName+":"+portNum)
+func NewConnection(hostName string,port string) (Connection,error){
+
+	connection := Connection{Socket:nil,Connected:false}
+
+	sock, err := net.Dial("tcp", hostName+":"+port)
 
 	if err != nil {
 		fmt.Println(err)
-		return
+		return connection,err
 	}
 
-	fmt.Printf("Connection established between %s and localhost.\n", hostName)
-	fmt.Printf("Remote Address : %s \n", conn.RemoteAddr().String())
-	fmt.Printf("Local Address : %s \n", conn.LocalAddr().String())
+	connection.Connected = true
+	connection.Socket = sock
 
+	fmt.Printf("Connection established between %s and localhost.\n", hostName)
+	fmt.Printf("Remote Address : %s \n", sock.RemoteAddr().String())
+	fmt.Printf("Local Address : %s \n", sock.LocalAddr().String())
+
+	return connection,nil
+}
+
+func (connection Connection)SendAll(data []byte) error{
+	length_data := len(data)
+	cpt := 0
+
+	for length_data > 0{
+		n,err := connection.Socket.Write(data[cpt:])
+
+		if err != nil  {
+			connection.Socket.Close()
+			fmt.Println("Connection closed")
+			return err
+		}
+		cpt += n
+	}
+
+	return nil
 }

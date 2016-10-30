@@ -2,14 +2,33 @@ package main
 
 import (
 	"CCP/Packets"
-	"fmt"
 	"CCP/Packets/Payloads"
+	"os"
+	"CCP/Network"
+	"fmt"
 )
 
 
 // Car Communication Protocol
 func main() {
 
+	// Server
+	if len(os.Args) > 1{
 
+		c,_ := Network.NewConnection("localhost","6000")
+
+		alert := Payloads.EncodeAlert("Test Alert")
+		pkt := Packets.Create_packet(alert)
+
+		fmt.Println(pkt)
+
+		c.SendAll(pkt)
+
+	}else{
+
+		Network.Start_server()
+
+
+	}
 }
 

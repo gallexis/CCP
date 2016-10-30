@@ -17,8 +17,8 @@ func Create_packet(payload Payload) []byte{
 	forged_payload := payload.Forge()
 
 	header := Header{}
-	copy(header.command_name[:],[]byte(payload.Get_command_name()) )
-	header.payload_length = uint16(len(forged_payload))
+	copy(header.Command_name[:],[]byte(payload.Get_command_name()) )
+	header.Payload_length = uint16(len(forged_payload))
 
 	packet := Packet{}
 	packet.header = header
@@ -37,10 +37,9 @@ func Decode_binary_header(pckt []byte) (*Header,error) {
 }
 
 func Decode_binary_payload(header *Header, payload []byte) (Payload,error) {
-
 	buffer_payload := bytes.NewBuffer(payload)
 
-	if bytes.HasSuffix(header.command_name[:], []byte("alert")){
+	if bytes.HasSuffix(header.Command_name[:], []byte("alert")){
 		Alert :=  Payloads.DecodeAlert(buffer_payload)
 		return  Alert,nil
 	}else {

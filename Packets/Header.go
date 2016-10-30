@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 )
 
-// Size of header: 6 Bytes
+// Size of header: 7 Bytes
 type Header struct {
 	Command_name [5]byte
 	Payload_length uint16
@@ -13,8 +13,8 @@ type Header struct {
 
 func (header *Header) read_header(packet *bytes.Buffer) (error){
 
-	copy(header.command_name[:],packet.Next(5) )
-	header.payload_length = binary.BigEndian.Uint16(packet.Next(2))
+	copy(header.Command_name[:],packet.Next(5) )
+	header.Payload_length = binary.BigEndian.Uint16(packet.Next(2))
 
 	return  nil
 }
