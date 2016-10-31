@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"time"
+	"log"
 )
 
 // Car Communication Protocol
@@ -19,7 +20,12 @@ func main() {
 
 	} else {
 
-		c, _ := Network.NewConnection("localhost", "6000")
+		c, err := Network.NewConnection("192.168.1.72", "6000")
+		if err != nil{
+			log.Print("Connection error to server: ")
+			log.Println(err)
+			return
+		}
 
 		alert := Payloads.EncodeAlert("Test Alert: "+c.Socket.LocalAddr().String())
 		pkt := Packets.Create_packet(alert)
@@ -27,7 +33,9 @@ func main() {
 		fmt.Println(pkt)
 
 		time.Sleep(100 * time.Millisecond)
-		c.SendAll(pkt)
+		c.Send_All(pkt)
 		time.Sleep(1000 * time.Millisecond)
+
+		Network.Client_handle_connection(c)
 	}
 }

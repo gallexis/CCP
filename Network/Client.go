@@ -3,25 +3,19 @@ package Network
 import (
 	"fmt"
 	"net"
+	"CCP/Packets/Payloads"
+	"log"
 )
 
-type Connection struct {
-	Socket    net.Conn
-	Connected bool
-}
-
-func NewConnection(hostName string, port string) (Connection, error) {
-
-	connection := Connection{Socket: nil, Connected: false}
+func NewConnection(hostName string, port string) (Client, error) {
+	connection := Client{Socket: nil}
 
 	sock, err := net.Dial("tcp", hostName+":"+port)
-
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		return connection, err
 	}
 
-	connection.Connected = true
 	connection.Socket = sock
 
 	fmt.Printf("Connection established between %s and localhost.\n", hostName)
@@ -31,20 +25,23 @@ func NewConnection(hostName string, port string) (Connection, error) {
 	return connection, nil
 }
 
-func (connection Connection) SendAll(data []byte) error {
-	length_data := len(data)
-	cpt := 0
+func Client_handle_connection(client Client) {
+	header := make([]byte, HEADER_SIZE)
 
-	for length_data > cpt {
-		n, err := connection.Socket.Write(data[cpt:])
-
-		if err != nil {
-			connection.Socket.Close()
-			fmt.Println("Connection closed")
-			return err
+	for {
+		decoded_payload,err := client.Receive_decoded_payload(header)
+		if err != nil{
+			break
 		}
-		cpt += n
-	}
+		//Decode the payload & do whatever the server wants
+		switch payload := decoded_payload.(type) {
+		case Payloads.Alert:
+			fmt.Println("Alert message :D")
+			fmt.Println(string(payload.Description))
 
-	return nil
+		default:
+			fmt.Print(":/")
+
+		}
+	}
 }

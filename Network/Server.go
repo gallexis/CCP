@@ -3,93 +3,45 @@ package Network
 import (
 	"CCP/Packets"
 	"CCP/Packets/Payloads"
-	"bufio"
 	"fmt"
 	"log"
 	"net"
 )
 
-type Client_message struct{
-	sock net.Conn
-	message []byte
-}
-
-var socket_pool = make(map[net.Conn]net.Addr)
+var client_pool = make(map[Client]net.Addr)
 var HEADER_SIZE int = 7
 
-func recv_all(length int, c net.Conn) ([]byte, error) {
+func Broadcast(emiter Client, message []byte){
 
-	reader := bufio.NewReader(c)
-	buf := make([]byte, length)
-
-	for length > 0 {
-
-		n, err := reader.Read(buf)
-		if err != nil || n == 0 {
-			return nil, err
-		}
-
-		length -= n
-	}
-	return buf, nil
-}
-
-func Broadcast(emiter net.Conn, message []byte){
-
-	for sock,_ := range socket_pool{
+	for sock,ip := range client_pool {
 		if sock != emiter{
-			sock.Write(message)
+			sock.Socket.Write(message)
+			log.Println("Broadcasted from "+emiter.Socket.RemoteAddr().String()+", to :"+ip.String())
 		}
 	}
 
 }
 
-func handleConnection(c net.Conn) {
-
-	log.Printf("Client %v connected.", c.RemoteAddr())
+func Server_handle_connection(client Client) {
+	log.Printf("Client %v connected.", client.Socket.RemoteAddr())
 
 	header := make([]byte, HEADER_SIZE)
 
 	for {
-		//Get header
-		n, err := c.Read(header)
-		if err != nil || n != HEADER_SIZE {
-			log.Print("Disconnected: ", err)
-			close_connection(c)
-			return
+		decoded_payload,err := client.Receive_decoded_payload(header)
+		if err != nil{
+			break
 		}
-
-		//Parse the header
-		parsed_header, err := Packets.Decode_binary_header(header)
-		if err != nil {
-			log.Print("Problem parsing header: ", err)
-			close_connection(c)
-			return
-		}
-
-		//Get the payload
-		payload_size := int(parsed_header.Payload_length)
-		payload, err := recv_all(payload_size, c)
-		if err != nil || len(payload) != payload_size {
-			log.Print("Problem getting payload: ", err)
-			close_connection(c)
-			return
-		}
+		binary_payload := Packets.Create_packet(decoded_payload)
 
 		//Broadcast the message to all the other nodes
-		go Broadcast(c,append(header,payload...))
+		//Have to re-encode the decoded packet in order to breoadcast it
+		go Broadcast(client,append(header,binary_payload...))
 
 		//The server can have a global view of the transmitted messages
-		//among the nodes:
+		//among the nodes
 
-		//Decode the payload
-		decoded_payload, err := Packets.Decode_binary_payload(parsed_header, payload)
-		if err != nil {
-			log.Print("Problem decoding the payload: ", err)
-			close_connection(c)
-			return
-		}
-
+		//Decode the payload & do whatever the server wants (logging..)
 		switch payload := decoded_payload.(type) {
 		case Payloads.Alert:
 			fmt.Println("Alert message :D")
@@ -99,15 +51,9 @@ func handleConnection(c net.Conn) {
 			fmt.Print(":/")
 
 		}
-
 	}
 }
 
-func close_connection(c net.Conn) {
-	log.Printf("Connection from %v closed.", c.RemoteAddr())
-	c.Close()
-	delete(socket_pool, c)
-}
 
 func Start_server() {
 	ln, err := net.Listen("tcp", ":6000")
@@ -118,16 +64,17 @@ func Start_server() {
 	fmt.Println("Server up and listening on port 6000")
 
 	for {
-		conn, err := ln.Accept()
+		sock, err := ln.Accept()
 
 		if err != nil {
 			log.Print("Error incoming connection: ")
 			log.Println(err)
-			close_connection(conn)
+			sock.Close()
 			continue
 		}
 
-		socket_pool[conn] = conn.RemoteAddr()
-		go handleConnection(conn)
+		client := Client{Socket:sock}
+		client_pool[client] = sock.RemoteAddr()
+		go Server_handle_connection(client)
 	}
 }
